@@ -1,6 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { DashboardLayout } from './layouts/DashboardLayout';
-import { DashboardHome } from './pages/DashboardHome';
+import DashboardHome from './pages/DashboardHome';
 import { Assessments } from './pages/Assessments';
 import { Landing } from './pages/Landing';
 import { Practice } from './pages/Practice';
