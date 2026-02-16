@@ -5,6 +5,7 @@ import { Assessments } from './pages/Assessments';
 import { Landing } from './pages/Landing';
 import { Practice } from './pages/Practice';
 import { Profile } from './pages/Profile';
+import { Results } from './pages/Results';
 import { Resources } from './pages/Resources';
 
 function App() {
@@ -18,6 +19,9 @@ function App() {
           <Route path="assessments" element={<Assessments />} />
           <Route path="resources" element={<Resources />} />
           <Route path="profile" element={<Profile />} />
+        </Route>
+        <Route path="/results" element={<DashboardLayout />}>
+          <Route index element={<Results />} />
         </Route>
       </Routes>
     </BrowserRouter>
