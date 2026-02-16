@@ -7,6 +7,8 @@ import { Practice } from './pages/Practice';
 import { Profile } from './pages/Profile';
 import { Results } from './pages/Results';
 import { Resources } from './pages/Resources';
+import { ShipPage } from './pages/ShipPage';
+import { TestChecklistPage } from './pages/TestChecklistPage';
 
 function App() {
   return (
@@ -25,6 +27,12 @@ function App() {
         </Route>
         <Route path="/results" element={<DashboardLayout />}>
           <Route index element={<Results />} />
+        </Route>
+        <Route path="/prp/07-test" element={<DashboardLayout />}>
+          <Route index element={<TestChecklistPage />} />
+        </Route>
+        <Route path="/prp/08-ship" element={<DashboardLayout />}>
+          <Route index element={<ShipPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
