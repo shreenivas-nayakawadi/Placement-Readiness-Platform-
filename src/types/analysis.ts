@@ -26,10 +26,28 @@ export interface AnalysisOutput {
   plan: DayPlan[];
   questions: string[];
   readinessScore: number;
+  companyIntel: CompanyIntel | null;
+  roundMapping: RoundMappingItem[];
 }
 
 export type SkillConfidence = 'know' | 'practice';
 export type SkillConfidenceMap = Record<string, SkillConfidence>;
+
+export type CompanySizeCategory = 'Startup' | 'Mid-size' | 'Enterprise';
+
+export interface CompanyIntel {
+  companyName: string;
+  industry: string;
+  sizeCategory: CompanySizeCategory;
+  typicalHiringFocus: string;
+  note: string;
+}
+
+export interface RoundMappingItem {
+  round: string;
+  focus: string;
+  whyThisRoundMatters: string;
+}
 
 export interface AnalysisEntry extends AnalysisOutput {
   id: string;

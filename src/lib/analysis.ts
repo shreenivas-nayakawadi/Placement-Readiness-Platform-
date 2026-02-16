@@ -1,4 +1,13 @@
-import type { AnalysisOutput, DayPlan, ExtractedSkills, RoundChecklist, SkillCategory } from '../types/analysis';
+import type {
+  AnalysisOutput,
+  CompanyIntel,
+  CompanySizeCategory,
+  DayPlan,
+  ExtractedSkills,
+  RoundChecklist,
+  RoundMappingItem,
+  SkillCategory,
+} from '../types/analysis';
 
 interface KeywordRule {
   skill: string;
@@ -286,8 +295,178 @@ function calculateReadinessScore(jdText: string, company: string, role: string, 
   return Math.max(0, Math.min(100, score));
 }
 
+const enterpriseCompanies = new Set([
+  'amazon',
+  'infosys',
+  'tcs',
+  'wipro',
+  'accenture',
+  'cognizant',
+  'microsoft',
+  'google',
+  'ibm',
+  'oracle',
+  'deloitte',
+  'capgemini',
+  'hcl',
+]);
+
+const midsizeCompanies = new Set([
+  'zoho',
+  'freshworks',
+  'postman',
+  'razorpay',
+  'atlassian',
+  'swiggy',
+  'zomato',
+]);
+
+function inferIndustry(company: string, jdText: string, role: string) {
+  const text = `${company} ${role} ${jdText}`.toLowerCase();
+
+  if (text.includes('bank') || text.includes('fintech') || text.includes('payments')) {
+    return 'Financial Technology';
+  }
+
+  if (text.includes('health') || text.includes('pharma') || text.includes('medical')) {
+    return 'Healthcare Technology';
+  }
+
+  if (text.includes('ecommerce') || text.includes('retail') || text.includes('marketplace')) {
+    return 'E-commerce Technology';
+  }
+
+  if (text.includes('saas') || text.includes('cloud') || text.includes('software')) {
+    return 'Software Product';
+  }
+
+  return 'Technology Services';
+}
+
+function inferCompanySizeCategory(company: string): CompanySizeCategory {
+  const normalized = company.trim().toLowerCase();
+
+  if (!normalized) {
+    return 'Startup';
+  }
+
+  if (enterpriseCompanies.has(normalized)) {
+    return 'Enterprise';
+  }
+
+  if (midsizeCompanies.has(normalized)) {
+    return 'Mid-size';
+  }
+
+  return 'Startup';
+}
+
+function buildCompanyIntel(company: string, role: string, jdText: string): CompanyIntel | null {
+  const cleaned = company.trim();
+  if (!cleaned) {
+    return null;
+  }
+
+  const sizeCategory = inferCompanySizeCategory(cleaned);
+  const typicalHiringFocus =
+    sizeCategory === 'Enterprise'
+      ? 'Structured DSA rounds, core CS fundamentals, and consistent evaluation rubrics.'
+      : 'Practical problem solving, project execution depth, and role-specific stack fluency.';
+
+  return {
+    companyName: cleaned,
+    industry: inferIndustry(cleaned, jdText, role),
+    sizeCategory,
+    typicalHiringFocus,
+    note: 'Demo Mode: Company intel generated heuristically.',
+  };
+}
+
+function hasStackSkills(extractedSkills: ExtractedSkills) {
+  return extractedSkills.Web.includes('React') || extractedSkills.Web.includes('Node.js');
+}
+
+function hasDSA(extractedSkills: ExtractedSkills) {
+  return extractedSkills['Core CS'].includes('DSA');
+}
+
+function buildRoundMapping(extractedSkills: ExtractedSkills, intel: CompanyIntel | null): RoundMappingItem[] {
+  const isEnterprise = intel?.sizeCategory === 'Enterprise';
+  const isStartup = !intel || intel.sizeCategory === 'Startup';
+
+  if (isEnterprise && hasDSA(extractedSkills)) {
+    return [
+      {
+        round: 'Round 1: Online Test',
+        focus: 'DSA + Aptitude',
+        whyThisRoundMatters: 'This round filters for speed, accuracy, and coding fundamentals at scale.',
+      },
+      {
+        round: 'Round 2: Technical',
+        focus: 'DSA + Core CS',
+        whyThisRoundMatters: 'Interviewers validate depth in algorithms and core computer science concepts.',
+      },
+      {
+        round: 'Round 3: Tech + Projects',
+        focus: 'Project architecture and implementation decisions',
+        whyThisRoundMatters: 'This round checks how you apply fundamentals to real engineering work.',
+      },
+      {
+        round: 'Round 4: HR',
+        focus: 'Role fit and communication',
+        whyThisRoundMatters: 'Final alignment on team fit, motivation, and long-term consistency.',
+      },
+    ];
+  }
+
+  if (isStartup && hasStackSkills(extractedSkills)) {
+    return [
+      {
+        round: 'Round 1: Practical Coding',
+        focus: 'Build/debug feature-level tasks using target stack',
+        whyThisRoundMatters: 'Startups prioritize immediate execution and shipping capability.',
+      },
+      {
+        round: 'Round 2: System Discussion',
+        focus: 'Architecture trade-offs and scalability',
+        whyThisRoundMatters: 'You are evaluated on owning end-to-end decisions under constraints.',
+      },
+      {
+        round: 'Round 3: Culture Fit',
+        focus: 'Ownership mindset and collaboration',
+        whyThisRoundMatters: 'Small teams require strong autonomy, clarity, and accountability.',
+      },
+    ];
+  }
+
+  return [
+    {
+      round: 'Round 1: Screening',
+      focus: 'Aptitude + basics',
+      whyThisRoundMatters: 'Helps shortlist candidates with reliable fundamentals.',
+    },
+    {
+      round: 'Round 2: Technical Interview',
+      focus: 'Core CS + JD skills',
+      whyThisRoundMatters: 'Maps your preparedness directly to role requirements.',
+    },
+    {
+      round: 'Round 3: Project Discussion',
+      focus: 'Project depth + problem solving approach',
+      whyThisRoundMatters: 'Demonstrates practical ownership beyond theoretical knowledge.',
+    },
+    {
+      round: 'Round 4: HR / Managerial',
+      focus: 'Communication + alignment',
+      whyThisRoundMatters: 'Ensures team fit and role expectations are clear on both sides.',
+    },
+  ];
+}
+
 export function analyzeJobDescription(jdText: string, company: string, role: string): AnalysisOutput {
   const extractedSkills = extractSkills(jdText);
+  const companyIntel = buildCompanyIntel(company, role, jdText);
+  const roundMapping = buildRoundMapping(extractedSkills, companyIntel);
 
   return {
     extractedSkills,
@@ -295,5 +474,15 @@ export function analyzeJobDescription(jdText: string, company: string, role: str
     plan: build7DayPlan(extractedSkills),
     questions: buildQuestions(extractedSkills),
     readinessScore: calculateReadinessScore(jdText, company, role, extractedSkills),
+    companyIntel,
+    roundMapping,
   };
+}
+
+export function deriveCompanyIntel(company: string, role: string, jdText: string) {
+  return buildCompanyIntel(company, role, jdText);
+}
+
+export function deriveRoundMapping(extractedSkills: ExtractedSkills, companyIntel: CompanyIntel | null) {
+  return buildRoundMapping(extractedSkills, companyIntel);
 }
