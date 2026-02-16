@@ -20,6 +20,7 @@ export function Assessments() {
   const [role, setRole] = useState('');
   const [jdText, setJdText] = useState('');
   const [error, setError] = useState('');
+  const isShortJd = jdText.trim().length > 0 && jdText.trim().length < 200;
 
   const handleAnalyze = (event: FormEvent) => {
     event.preventDefault();
@@ -35,6 +36,7 @@ export function Assessments() {
     const entry: AnalysisEntry = {
       id: createId(),
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       company: company.trim(),
       role: role.trim(),
       jdText: jdText.trim(),
@@ -80,6 +82,7 @@ export function Assessments() {
           <label className="space-y-1 text-sm">
             <span className="font-medium text-slate-700">Job Description</span>
             <textarea
+              required
               value={jdText}
               onChange={(event) => setJdText(event.target.value)}
               rows={12}
@@ -89,6 +92,11 @@ export function Assessments() {
           </label>
 
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+          {isShortJd ? (
+            <p className="text-sm text-amber-700">
+              This JD is too short to analyze deeply. Paste full JD for better output.
+            </p>
+          ) : null}
 
           <button
             type="submit"

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AnalysisReport } from '../components/analysis/AnalysisReport';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { deriveCompanyIntel, deriveRoundMapping } from '../lib/analysis';
 import { getActiveEntryId, getEntryById, getLatestEntry, updateEntry } from '../lib/storage';
 import type { AnalysisEntry } from '../types/analysis';
 
@@ -34,46 +33,6 @@ export function Results() {
   useEffect(() => {
     setEntry(resolvedEntry);
   }, [resolvedEntry]);
-
-  useEffect(() => {
-    if (!entry) {
-      return;
-    }
-
-    const allSkills = Object.values(entry.extractedSkills).flat();
-    const existingMap = entry.skillConfidenceMap ?? {};
-    const nextMap: Record<string, 'know' | 'practice'> = {};
-
-    for (const skill of allSkills) {
-      nextMap[skill] = existingMap[skill] ?? 'practice';
-    }
-
-    const nextIntel = entry.companyIntel ?? deriveCompanyIntel(entry.company, entry.role, entry.jdText);
-    const nextRoundMapping = entry.roundMapping?.length
-      ? entry.roundMapping
-      : deriveRoundMapping(entry.extractedSkills, nextIntel);
-
-    const needsBackfill =
-      entry.baseReadinessScore === undefined ||
-      allSkills.some((skill) => existingMap[skill] === undefined) ||
-      entry.companyIntel === undefined ||
-      entry.roundMapping === undefined;
-
-    if (!needsBackfill) {
-      return;
-    }
-
-    const nextEntry: AnalysisEntry = {
-      ...entry,
-      baseReadinessScore: entry.baseReadinessScore ?? entry.readinessScore,
-      skillConfidenceMap: nextMap,
-      companyIntel: nextIntel,
-      roundMapping: nextRoundMapping,
-    };
-
-    setEntry(nextEntry);
-    updateEntry(nextEntry);
-  }, [entry]);
 
   if (!entry) {
     return (

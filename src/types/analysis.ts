@@ -1,37 +1,32 @@
-export type SkillCategory =
-  | 'Core CS'
-  | 'Languages'
-  | 'Web'
-  | 'Data'
-  | 'Cloud/DevOps'
-  | 'Testing'
-  | 'General';
+export type SkillConfidence = 'know' | 'practice';
+export type SkillConfidenceMap = Record<string, SkillConfidence>;
 
-export type ExtractedSkills = Record<SkillCategory, string[]>;
+export interface ExtractedSkills {
+  coreCS: string[];
+  languages: string[];
+  web: string[];
+  data: string[];
+  cloud: string[];
+  testing: string[];
+  other: string[];
+}
 
-export interface RoundChecklist {
-  round: string;
+export interface ChecklistRound {
+  roundTitle: string;
   items: string[];
 }
 
 export interface DayPlan {
   day: string;
   focus: string;
-  items: string[];
+  tasks: string[];
 }
 
-export interface AnalysisOutput {
-  extractedSkills: ExtractedSkills;
-  checklist: RoundChecklist[];
-  plan: DayPlan[];
-  questions: string[];
-  readinessScore: number;
-  companyIntel: CompanyIntel | null;
-  roundMapping: RoundMappingItem[];
+export interface RoundMappingItem {
+  roundTitle: string;
+  focusAreas: string[];
+  whyItMatters: string;
 }
-
-export type SkillConfidence = 'know' | 'practice';
-export type SkillConfidenceMap = Record<string, SkillConfidence>;
 
 export type CompanySizeCategory = 'Startup' | 'Mid-size' | 'Enterprise';
 
@@ -43,18 +38,23 @@ export interface CompanyIntel {
   note: string;
 }
 
-export interface RoundMappingItem {
-  round: string;
-  focus: string;
-  whyThisRoundMatters: string;
+export interface AnalysisOutput {
+  extractedSkills: ExtractedSkills;
+  roundMapping: RoundMappingItem[];
+  checklist: ChecklistRound[];
+  plan7Days: DayPlan[];
+  questions: string[];
+  baseScore: number;
+  skillConfidenceMap: SkillConfidenceMap;
+  finalScore: number;
+  companyIntel: CompanyIntel | null;
 }
 
 export interface AnalysisEntry extends AnalysisOutput {
   id: string;
   createdAt: string;
+  updatedAt: string;
   company: string;
   role: string;
   jdText: string;
-  baseReadinessScore?: number;
-  skillConfidenceMap?: SkillConfidenceMap;
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { formatDate, getHistory } from '../lib/storage';
+import { formatDate, getHistory, getHistoryWarning } from '../lib/storage';
 import type { AnalysisEntry } from '../types/analysis';
 
 export function Resources() {
   const [history] = useState<AnalysisEntry[]>(() => getHistory());
+  const [warning] = useState(() => getHistoryWarning());
 
   return (
     <Card>
@@ -14,6 +15,11 @@ export function Resources() {
         <CardDescription>Saved analyses from localStorage. Click any entry to open full results.</CardDescription>
       </CardHeader>
       <CardContent>
+        {warning ? (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            {warning}
+          </p>
+        ) : null}
         {history.length === 0 ? (
           <p className="text-sm text-slate-600">No history yet. Analyze a JD from the Assessments page.</p>
         ) : (
@@ -29,7 +35,7 @@ export function Resources() {
                     <p className="font-medium text-slate-900">{entry.company || 'Unknown company'} - {entry.role || 'Role not specified'}</p>
                     <p className="mt-1 text-xs text-slate-600">{formatDate(entry.createdAt)}</p>
                   </div>
-                  <p className="font-['Sora'] text-lg font-semibold text-indigo-700">{entry.readinessScore}/100</p>
+                  <p className="font-['Sora'] text-lg font-semibold text-indigo-700">{entry.finalScore}/100</p>
                 </div>
               </Link>
             ))}

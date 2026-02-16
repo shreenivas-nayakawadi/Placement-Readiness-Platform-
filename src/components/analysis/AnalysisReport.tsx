@@ -1,16 +1,27 @@
 import { useMemo, useState } from 'react';
+import { calculateFinalScore } from '../../lib/analysis';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import type { AnalysisEntry, SkillConfidence, SkillConfidenceMap } from '../../types/analysis';
 
 const categoryOrder: (keyof AnalysisEntry['extractedSkills'])[] = [
-  'Core CS',
-  'Languages',
-  'Web',
-  'Data',
-  'Cloud/DevOps',
-  'Testing',
-  'General',
+  'coreCS',
+  'languages',
+  'web',
+  'data',
+  'cloud',
+  'testing',
+  'other',
 ];
+
+const categoryLabels: Record<keyof AnalysisEntry['extractedSkills'], string> = {
+  coreCS: 'Core CS',
+  languages: 'Languages',
+  web: 'Web',
+  data: 'Data',
+  cloud: 'Cloud/DevOps',
+  testing: 'Testing',
+  other: 'Other',
+};
 
 interface AnalysisReportProps {
   entry: AnalysisEntry;
@@ -22,40 +33,15 @@ function flattenSkills(entry: AnalysisEntry) {
   return Array.from(new Set(all));
 }
 
-function withDefaults(entry: AnalysisEntry) {
-  const allSkills = flattenSkills(entry);
-  const existing = entry.skillConfidenceMap ?? {};
-  const skillConfidenceMap: SkillConfidenceMap = {};
-
-  for (const skill of allSkills) {
-    skillConfidenceMap[skill] = existing[skill] ?? 'practice';
-  }
-
-  return {
-    allSkills,
-    skillConfidenceMap,
-    baseScore: entry.baseReadinessScore ?? entry.readinessScore,
-  };
-}
-
-function buildLiveScore(baseScore: number, allSkills: string[], map: SkillConfidenceMap) {
-  const adjustment = allSkills.reduce((sum, skill) => {
-    const value = map[skill] ?? 'practice';
-    return sum + (value === 'know' ? 2 : -2);
-  }, 0);
-
-  return Math.max(0, Math.min(100, baseScore + adjustment));
-}
-
 function planText(entry: AnalysisEntry) {
-  return entry.plan
-    .map((day) => `${day.day} (${day.focus})\n${day.items.map((item) => `- ${item}`).join('\n')}`)
+  return entry.plan7Days
+    .map((day) => `${day.day} (${day.focus})\n${day.tasks.map((task) => `- ${task}`).join('\n')}`)
     .join('\n\n');
 }
 
 function checklistText(entry: AnalysisEntry) {
   return entry.checklist
-    .map((round) => `${round.round}\n${round.items.map((item) => `- ${item}`).join('\n')}`)
+    .map((round) => `${round.roundTitle}\n${round.items.map((item) => `- ${item}`).join('\n')}`)
     .join('\n\n');
 }
 
@@ -70,27 +56,27 @@ function fullExportText(entry: AnalysisEntry) {
       if (!items.length) {
         return '';
       }
-      return `${category}: ${items.join(', ')}`;
+      return `${categoryLabels[category]}: ${items.join(', ')}`;
     })
     .filter(Boolean)
     .join('\n');
-  const skillsSection = categorySkills || 'No skills detected';
 
-  const weakSkills = Object.entries(entry.skillConfidenceMap ?? {})
+  const weakSkills = Object.entries(entry.skillConfidenceMap)
     .filter(([, value]) => value === 'practice')
     .map(([skill]) => skill)
     .slice(0, 3)
     .join(', ');
 
-  const roundFlow = (entry.roundMapping ?? [])
-    .map((item) => `${item.round} - ${item.focus}\nWhy this round matters: ${item.whyThisRoundMatters}`)
-    .join('\n\n') || 'No round mapping available';
+  const roundFlow = entry.roundMapping
+    .map((item) => `${item.roundTitle} - ${item.focusAreas.join(', ')}\nWhy this round matters: ${item.whyItMatters}`)
+    .join('\n\n');
 
   return [
     'Placement Readiness Analysis',
     `Company: ${entry.company || 'Unknown company'}`,
     `Role: ${entry.role || 'Role not specified'}`,
-    `Score: ${entry.readinessScore}/100`,
+    `Base Score: ${entry.baseScore}/100`,
+    `Final Score: ${entry.finalScore}/100`,
     '',
     'Company Intel',
     `Company: ${entry.companyIntel?.companyName || 'Not provided'}`,
@@ -100,10 +86,10 @@ function fullExportText(entry: AnalysisEntry) {
     `${entry.companyIntel?.note || 'Demo Mode: Company intel generated heuristically.'}`,
     '',
     'Round Mapping Timeline',
-    roundFlow,
+    roundFlow || 'No round mapping available',
     '',
     'Key Skills Extracted',
-    skillsSection,
+    categorySkills || 'No skills detected',
     '',
     'Round-wise Preparation Checklist',
     checklistText(entry),
@@ -124,22 +110,17 @@ export function AnalysisReport({ entry, onEntryChange }: AnalysisReportProps) {
   const [copyStatus, setCopyStatus] = useState('');
 
   const state = useMemo(() => {
-    const defaults = withDefaults(entry);
-    const score = buildLiveScore(defaults.baseScore, defaults.allSkills, defaults.skillConfidenceMap);
-    return {
-      ...defaults,
-      score,
-      weakSkills: defaults.allSkills.filter((skill) => defaults.skillConfidenceMap[skill] === 'practice').slice(0, 3),
-    };
+    const allSkills = flattenSkills(entry);
+    const weakSkills = allSkills.filter((skill) => entry.skillConfidenceMap[skill] === 'practice').slice(0, 3);
+    return { allSkills, weakSkills };
   }, [entry]);
 
   const persist = (skillConfidenceMap: SkillConfidenceMap) => {
-    const nextScore = buildLiveScore(state.baseScore, state.allSkills, skillConfidenceMap);
     const nextEntry: AnalysisEntry = {
       ...entry,
-      baseReadinessScore: state.baseScore,
       skillConfidenceMap,
-      readinessScore: nextScore,
+      finalScore: calculateFinalScore(entry.baseScore, skillConfidenceMap),
+      updatedAt: new Date().toISOString(),
     };
 
     onEntryChange(nextEntry);
@@ -147,7 +128,7 @@ export function AnalysisReport({ entry, onEntryChange }: AnalysisReportProps) {
 
   const setSkillConfidence = (skill: string, value: SkillConfidence) => {
     const nextMap = {
-      ...state.skillConfidenceMap,
+      ...entry.skillConfidenceMap,
       [skill]: value,
     };
 
@@ -186,10 +167,10 @@ export function AnalysisReport({ entry, onEntryChange }: AnalysisReportProps) {
         </CardHeader>
         <CardContent>
           <div className="inline-flex items-end gap-2">
-            <span className="font-['Sora'] text-5xl font-semibold text-indigo-700">{state.score}</span>
+            <span className="font-['Sora'] text-5xl font-semibold text-indigo-700">{entry.finalScore}</span>
             <span className="pb-1 text-sm text-slate-600">/100</span>
           </div>
-          <p className="mt-2 text-xs text-slate-500">Live score updates with skill confidence and is always bounded 0-100.</p>
+          <p className="mt-2 text-xs text-slate-500">Base score is fixed at analyze time. Final score updates from confidence toggles only.</p>
         </CardContent>
       </Card>
 
@@ -217,16 +198,16 @@ export function AnalysisReport({ entry, onEntryChange }: AnalysisReportProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {(entry.roundMapping ?? []).map((round, index) => (
-              <div key={round.round} className="relative pl-8">
+            {entry.roundMapping.map((round, index) => (
+              <div key={round.roundTitle} className="relative pl-8">
                 <span className="absolute left-0 top-1.5 h-3 w-3 rounded-full bg-indigo-600" />
-                {index !== (entry.roundMapping?.length ?? 0) - 1 ? (
+                {index !== entry.roundMapping.length - 1 ? (
                   <span className="absolute left-[5px] top-5 h-[calc(100%-0.25rem)] w-px bg-indigo-200" />
                 ) : null}
-                <p className="font-medium text-slate-900">{round.round}</p>
-                <p className="text-sm text-slate-700">{round.focus}</p>
+                <p className="font-medium text-slate-900">{round.roundTitle}</p>
+                <p className="text-sm text-slate-700">{round.focusAreas.join(', ')}</p>
                 <p className="mt-1 text-xs text-slate-600">
-                  <span className="font-medium text-slate-700">Why this round matters:</span> {round.whyThisRoundMatters}
+                  <span className="font-medium text-slate-700">Why this round matters:</span> {round.whyItMatters}
                 </p>
               </div>
             ))}
@@ -250,10 +231,10 @@ export function AnalysisReport({ entry, onEntryChange }: AnalysisReportProps) {
 
             return (
               <div key={category}>
-                <p className="mb-2 text-sm font-medium text-slate-700">{category}</p>
+                <p className="mb-2 text-sm font-medium text-slate-700">{categoryLabels[category]}</p>
                 <div className="space-y-2">
                   {skills.map((skill) => {
-                    const confidence = state.skillConfidenceMap[skill] ?? 'practice';
+                    const confidence = entry.skillConfidenceMap[skill] ?? 'practice';
 
                     return (
                       <div key={skill} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-3">
@@ -308,8 +289,8 @@ export function AnalysisReport({ entry, onEntryChange }: AnalysisReportProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {entry.checklist.map((round) => (
-            <div key={round.round} className="rounded-xl border border-slate-200 p-4">
-              <p className="font-medium text-slate-900">{round.round}</p>
+            <div key={round.roundTitle} className="rounded-xl border border-slate-200 p-4">
+              <p className="font-medium text-slate-900">{round.roundTitle}</p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
                 {round.items.map((item) => (
                   <li key={item}>{item}</li>
@@ -325,12 +306,12 @@ export function AnalysisReport({ entry, onEntryChange }: AnalysisReportProps) {
           <CardTitle>7-day Plan</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {entry.plan.map((day) => (
+          {entry.plan7Days.map((day) => (
             <div key={day.day} className="rounded-xl border border-slate-200 p-4">
               <p className="font-medium text-slate-900">{day.day}: {day.focus}</p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                {day.items.map((item) => (
-                  <li key={item}>{item}</li>
+                {day.tasks.map((task) => (
+                  <li key={task}>{task}</li>
                 ))}
               </ul>
             </div>
