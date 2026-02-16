@@ -28,10 +28,15 @@ export interface AnalysisOutput {
   readinessScore: number;
 }
 
+export type SkillConfidence = 'know' | 'practice';
+export type SkillConfidenceMap = Record<string, SkillConfidence>;
+
 export interface AnalysisEntry extends AnalysisOutput {
   id: string;
   createdAt: string;
   company: string;
   role: string;
   jdText: string;
+  baseReadinessScore?: number;
+  skillConfidenceMap?: SkillConfidenceMap;
 }

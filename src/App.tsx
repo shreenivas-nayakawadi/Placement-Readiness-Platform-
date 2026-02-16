@@ -20,6 +20,9 @@ function App() {
           <Route path="resources" element={<Resources />} />
           <Route path="profile" element={<Profile />} />
         </Route>
+        <Route path="/history" element={<DashboardLayout />}>
+          <Route index element={<Resources />} />
+        </Route>
         <Route path="/results" element={<DashboardLayout />}>
           <Route index element={<Results />} />
         </Route>

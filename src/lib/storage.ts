@@ -31,6 +31,16 @@ export function saveEntry(entry: AnalysisEntry) {
   setActiveEntryId(entry.id);
 }
 
+export function updateEntry(entry: AnalysisEntry) {
+  const existing = getHistory();
+  const found = existing.some((item) => item.id === entry.id);
+  const next = found
+    ? existing.map((item) => (item.id === entry.id ? entry : item))
+    : [entry, ...existing];
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  setActiveEntryId(entry.id);
+}
+
 export function setActiveEntryId(id: string) {
   localStorage.setItem(ACTIVE_KEY, id);
 }

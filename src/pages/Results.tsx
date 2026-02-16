@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AnalysisReport } from '../components/analysis/AnalysisReport';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { getActiveEntryId, getEntryById, getLatestEntry } from '../lib/storage';
+import { getActiveEntryId, getEntryById, getLatestEntry, updateEntry } from '../lib/storage';
+import type { AnalysisEntry } from '../types/analysis';
 
 interface LocationState {
   id?: string;
@@ -11,7 +12,7 @@ interface LocationState {
 export function Results() {
   const location = useLocation();
 
-  const entry = useMemo(() => {
+  const resolvedEntry = useMemo(() => {
     const state = (location.state ?? {}) as LocationState;
     const stateId = state.id;
     const queryId = new URLSearchParams(location.search).get('id');
@@ -26,6 +27,43 @@ export function Results() {
 
     return getLatestEntry();
   }, [location.search, location.state]);
+
+  const [entry, setEntry] = useState<AnalysisEntry | undefined>(resolvedEntry);
+
+  useEffect(() => {
+    setEntry(resolvedEntry);
+  }, [resolvedEntry]);
+
+  useEffect(() => {
+    if (!entry) {
+      return;
+    }
+
+    const allSkills = Object.values(entry.extractedSkills).flat();
+    const existingMap = entry.skillConfidenceMap ?? {};
+    const nextMap: Record<string, 'know' | 'practice'> = {};
+
+    for (const skill of allSkills) {
+      nextMap[skill] = existingMap[skill] ?? 'practice';
+    }
+
+    const needsBackfill =
+      entry.baseReadinessScore === undefined ||
+      allSkills.some((skill) => existingMap[skill] === undefined);
+
+    if (!needsBackfill) {
+      return;
+    }
+
+    const nextEntry: AnalysisEntry = {
+      ...entry,
+      baseReadinessScore: entry.baseReadinessScore ?? entry.readinessScore,
+      skillConfidenceMap: nextMap,
+    };
+
+    setEntry(nextEntry);
+    updateEntry(nextEntry);
+  }, [entry]);
 
   if (!entry) {
     return (
@@ -45,5 +83,13 @@ export function Results() {
     );
   }
 
-  return <AnalysisReport entry={entry} />;
+  return (
+    <AnalysisReport
+      entry={entry}
+      onEntryChange={(nextEntry) => {
+        setEntry(nextEntry);
+        updateEntry(nextEntry);
+      }}
+    />
+  );
 }
