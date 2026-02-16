@@ -5,6 +5,7 @@ import { Assessments } from './pages/Assessments';
 import { Landing } from './pages/Landing';
 import { Practice } from './pages/Practice';
 import { Profile } from './pages/Profile';
+import { ProofPage } from './pages/ProofPage';
 import { Results } from './pages/Results';
 import { Resources } from './pages/Resources';
 import { ShipPage } from './pages/ShipPage';
@@ -33,6 +34,9 @@ function App() {
         </Route>
         <Route path="/prp/08-ship" element={<DashboardLayout />}>
           <Route index element={<ShipPage />} />
+        </Route>
+        <Route path="/prp/proof" element={<DashboardLayout />}>
+          <Route index element={<ProofPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
